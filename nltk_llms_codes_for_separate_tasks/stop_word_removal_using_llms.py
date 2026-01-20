@@ -37,10 +37,10 @@ models = [
 ]
 
 # Input file
-input_file = "dblp_cleaned_fast_100_random_samples.jsonl"
+input_file = "dblp_1000_random_samples.jsonl"
 
 # Output folder
-output_folder = r"C:\Users\PMLS\Downloads\keyword processing\stopword_removal_using_llms"
+output_folder = r"stopword_removal_using_llms"
 os.makedirs(output_folder, exist_ok=True)
 
 # LangChain Prompt Template

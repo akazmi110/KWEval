@@ -10,10 +10,10 @@ nltk.download('punkt')
 nltk.download('stopwords')
 
 # Input dataset path
-INPUT_FILE = r"C:\Users\PMLS\Downloads\keyword processing\dblp_cleaned_fast_100_random_samples.jsonl"
+INPUT_FILE = r"dblp_1000_random_samples.jsonl"
 
 # Output folder
-OUTPUT_FOLDER = r"C:\Users\PMLS\Downloads\keyword processing\stopword_removal_using_llms_nltk"
+OUTPUT_FOLDER = r"stopword_removal_using_llms_nltk"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 # Load English stopwords

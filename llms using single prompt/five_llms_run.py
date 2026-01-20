@@ -13,32 +13,29 @@ import re
 load_dotenv()
 
 # ============================
-# PAID MODELS (NO RATE LIMITS!) - uses your OpenRouter credits
-# Cost: ~$0.05–$0.20 for all 500 requests
+
 # ============================
 PAID_MODELS = [
     "openai/gpt-4o-mini"
-   "deepseek/deepseek-r1-0528-qwen3-8b",           # Paid version (no :free)
-    "qwen/qwen-2.5-72b-instruct",                   # Paid
-    "x-ai/grok-4.1-fast",                           # Paid (free trial may apply, but safe)
-    "nvidia/nemotron-nano-12b-v2-vl",               # Paid
-    "mistralai/mistral-7b-instruct",                # Paid
+   "deepseek/deepseek-r1-0528-qwen3-8b",           
+    "qwen/qwen-2.5-72b-instruct",                   
+    "x-ai/grok-4.1-fast",                           
+    "mistralai/mistral-7b-instruct",               
 ]
 
 MODEL_SHORT_NAMES = [
     "openai-gpt"
    "deepseek-r1-qwen3-8b",
-  "grok-4.1-fast",
-   "nemotron-nano",
+   "qwen-2.5-72b-instruct",
+   "grok-4.1-fast",
    "mistral-7b",
 ]
 
 MODEL_DISPLAY_NAMES = [
-        "openai-gpt-4o-mini"
+    "openai-gpt-4o-mini"
     "DeepSeek-R1 (Qwen3-8B)",
     "Qwen-2.5-72B",
     "Grok 4.1 Fast (xAI)",
-    "Nemotron Nano 12B v2 VL",
     "Mistral-7B"
 ]
 
@@ -52,7 +49,7 @@ structured_flags = []
 for i, model_name in enumerate(PAID_MODELS):
     llm = ChatOpenAI(
         model=model_name,
-        temperature=0,
+        temperature=0.1,
         api_key=os.getenv("keyword_processing"),
         base_url="https://openrouter.ai/api/v1",
         max_tokens=400,
@@ -95,13 +92,13 @@ for i, model_name in enumerate(PAID_MODELS):
 # ============================
 # Paths
 # ============================
-input_file = r"dblp_cleaned_fast_100_random_samples.jsonl"
-output_dir = r"C:\Users\PC\Desktop\keyword processing\llms"
+input_file = r"dblp_1000_random_samples.jsonl"
+output_dir = r"llms"
 os.makedirs(output_dir, exist_ok=True)
 base_output = os.path.join(output_dir, "dblp_cleaned_multi_free")
 
 # ============================
-# Process EACH model on ALL 100 papers
+# Process EACH model on ALL 1000 papers
 # ============================
 for model_idx in range(len(PAID_MODELS)):
     short_name = MODEL_SHORT_NAMES[model_idx]
@@ -117,9 +114,8 @@ for model_idx in range(len(PAID_MODELS)):
     if os.path.exists(prog_path):
         with open(prog_path, 'r') as f:
             start_line = int(f.read().strip())
-        print(f"\nResuming {display_name} from line {start_line + 1}/100")
     else:
-        print(f"\nStarting {display_name} (100 papers)")
+        print(f"\nStarting {display_name} (1000 papers)")
 
     file_handle = open(out_path, 'a', encoding='utf-8')
 
@@ -127,7 +123,7 @@ for model_idx in range(len(PAID_MODELS)):
         for _ in range(start_line):
             f_in.readline()
 
-        pbar = tqdm(total=100, initial=start_line, desc=f"[{display_name}]", unit="paper")
+        pbar = tqdm(total=1000, initial=start_line, desc=f"[{display_name}]", unit="paper")
 
         for line_num, line in enumerate(f_in, start=start_line):
             line = line.strip()
@@ -197,6 +193,6 @@ for model_idx in range(len(PAID_MODELS)):
 
     print(f"Finished {display_name} → {out_path}")
 
-print("\nALL DONE! 5 models × 100 papers = 500 cleaned results")
+print("\nALL DONE!")
 print("Check folder:")
 print(output_dir)

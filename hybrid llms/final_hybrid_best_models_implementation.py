@@ -128,7 +128,7 @@ def process_keywords(orig_keywords: str) -> str:
 # =======================
 # Input/output files
 # =======================
-input_file = "dblp_cleaned_fast_100_random_samples.jsonl"
+input_file = "dblp_1000_random_samples.jsonl"
 output_file = "dblp_keywords_hybrid_parallel_retry.jsonl"
 os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
 

@@ -33,6 +33,9 @@ MODELS = [
     {"name": "qwen/qwen-2.5-72b-instruct", "short": "qwen-2.5-72b-instruct", "display": "qwen-2.5-72b-instruct", "use_structured": False},
 ]
 
+# ============================
+# SCHEMA
+# ============================
 class CleanedKeywords(BaseModel):
     cleaned_keywords: List[str] = Field(description="List of cleaned academic keywords")
 
@@ -48,7 +51,6 @@ def safe_parse_output(result) -> List[str]:
         else:
             text = str(result)
 
-        # Find JSON block
         json_match = re.search(r"\{.*?\}(?=\s*$|\n|$)", text, re.DOTALL)
         if json_match:
             data = json.loads(json_match.group())
@@ -58,16 +60,16 @@ def safe_parse_output(result) -> List[str]:
                 return data
             return list(data.values()) if isinstance(data, dict) else []
         return []
-    except:
+    except Exception:
         return []
 
 # ============================
-# BUILD CHAINS (Fixed for Azure JSON requirement)
+# BUILD CHAINS
 # ============================
 def build_chains(model_name: str, use_structured: bool):
     llm = ChatOpenAI(
         model=model_name,
-        temperature=0,
+        temperature=0.1,
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         max_tokens=500,
@@ -75,8 +77,11 @@ def build_chains(model_name: str, use_structured: bool):
         max_retries=2,
     )
 
-    # Base instruction that satisfies Azure's "json" requirement
-    json_instruction = "You are a precise keyword processor. Always respond in valid JSON format with the key 'cleaned_keywords' containing a list of strings. Never add explanations."
+    json_instruction = (
+        "You are a precise keyword processor. "
+        "Always respond in valid JSON format with the key 'cleaned_keywords' containing a list of strings. "
+        "Never add explanations."
+    )
 
     prompts = {
         "lowercase": ChatPromptTemplate.from_template(
@@ -87,13 +92,15 @@ def build_chains(model_name: str, use_structured: bool):
         ),
         "no_generics": ChatPromptTemplate.from_template(
             f"{json_instruction}\n"
-            "Task: Remove generic terms like 'analysis', 'study', 'approach', 'method', 'framework', 'system'. Keep domain-specific terms. Lowercase everything.\n"
+            "Task: Remove generic terms like 'analysis', 'study', 'approach', 'method', 'framework', 'system'. "
+            "Keep domain-specific terms. Lowercase everything.\n"
             "Input: {raw_keywords}\n"
             "Output ONLY valid JSON: {{\"cleaned_keywords\": [...]}}"
         ),
         "no_punct": ChatPromptTemplate.from_template(
             f"{json_instruction}\n"
-            "Task: Remove punctuation, symbols, slashes, hyphens, parentheses. Keep only letters, numbers, spaces. Then lowercase.\n"
+            "Task: Remove punctuation, symbols, slashes, hyphens, parentheses. "
+            "Keep only letters, numbers, spaces. Then lowercase.\n"
             "Input: {raw_keywords}\n"
             "Output ONLY valid JSON: {{\"cleaned_keywords\": [...]}}"
         ),
@@ -105,13 +112,13 @@ def build_chains(model_name: str, use_structured: bool):
         ),
         "expand": ChatPromptTemplate.from_template(
             f"{json_instruction}\n"
-            "Task: Expand common academic acronyms (nlp → natural language processing, ml → machine learning, cnn → convolutional neural network, etc.). Lowercase.\n"
+            "Task: Expand common academic acronyms (nlp → natural language processing, "
+            "ml → machine learning, cnn → convolutional neural network, etc.). Lowercase.\n"
             "Input: {raw_keywords}\n"
             "Output ONLY valid JSON: {{\"cleaned_keywords\": [...]}}"
         ),
         "final": ChatPromptTemplate.from_template(
             f"{json_instruction}\n"
-            "Refine into the BEST final list of maximum 15 technical, specific keywords.\n"
             "Remove duplicates, keep most important domain terms.\n"
             "Inputs:\n"
             "- Lowercased: {lowercase}\n"
@@ -128,7 +135,6 @@ def build_chains(model_name: str, use_structured: bool):
 
     for task, prompt in prompts.items():
         if use_structured:
-            # This now works because prompt contains "JSON"
             chains[task] = prompt | llm.with_structured_output(CleanedKeywords, method="json_mode")
         else:
             chains[task] = prompt | llm
@@ -149,7 +155,6 @@ def process_paper(args: Tuple[Dict, int, str, bool]) -> Tuple[int, Dict, List[st
 
         raw_text = ", ".join(map(str, raw_kw))
 
-        # Run 5 intermediate tasks in parallel
         tasks = ["lowercase", "no_generics", "no_punct", "lemmatize", "expand"]
         with ThreadPoolExecutor(max_workers=5) as exec:
             futures = {exec.submit(chains[task].invoke, {"raw_keywords": raw_text}): task for task in tasks}
@@ -164,10 +169,9 @@ def process_paper(args: Tuple[Dict, int, str, bool]) -> Tuple[int, Dict, List[st
                         parser = chains[f"{task}_parser"]
                         parsed = parser.parse(res.content) if hasattr(res, "content") else safe_parse_output(res)
                         intermediate_results[task] = parsed.get("cleaned_keywords", []) if isinstance(parsed, dict) else parsed
-                except:
+                except Exception:
                     intermediate_results[task] = []
 
-        # Final refinement
         final_input = {
             "lowercase": " | ".join(intermediate_results.get("lowercase", [])),
             "no_generics": " | ".join(intermediate_results.get("no_generics", [])),
@@ -184,15 +188,18 @@ def process_paper(args: Tuple[Dict, int, str, bool]) -> Tuple[int, Dict, List[st
             if isinstance(final_cleaned, dict):
                 final_cleaned = final_cleaned.get("cleaned_keywords", [])
 
-        # Dedupe & limit
+        # ============================
+        # DEDUPE ONLY (NO LIMIT)
+        # ============================
         seen = set()
         unique = []
         for kw in final_cleaned:
             k = kw.strip().lower()
-            if k and k not in seen and len(unique) < 20:
+            if k and k not in seen:
                 unique.append(kw.strip())
                 seen.add(k)
-        final_cleaned = unique[:15]
+
+        final_cleaned = unique
 
         return line_num, paper, final_cleaned
 
@@ -203,8 +210,8 @@ def process_paper(args: Tuple[Dict, int, str, bool]) -> Tuple[int, Dict, List[st
 # ============================
 # MAIN LOOP
 # ============================
-input_file = r"dblp_cleaned_fast_100_random_samples.jsonl"
-output_dir = r"hybrid_llms"
+input_file = r"dblp_1000_random_samples.jsonl"
+output_dir = r"llms_using_parallel_prompt"
 os.makedirs(output_dir, exist_ok=True)
 
 for model_info in MODELS:
@@ -226,7 +233,7 @@ for model_info in MODELS:
         print(f"Resuming from line {start_line + 1}")
 
     with open(out_path, 'a', encoding='utf-8') as file_handle:
-        pbar = tqdm(total=100, initial=start_line, desc=display_name, unit="paper")
+        pbar = tqdm(total=1000, initial=start_line, desc=display_name, unit="paper")
 
         batch_size = 3 if use_structured else 1
 
@@ -272,7 +279,7 @@ for model_info in MODELS:
                             prog.write(str(line_num + 1))
 
                         pbar.update(1)
-                        time.sleep(0.7 if use_structured else 1.6)  # Rate limit
+                        time.sleep(0.7 if use_structured else 1.6)
 
         pbar.close()
 
@@ -281,5 +288,5 @@ for model_info in MODELS:
 
     print(f"Finished {display_name} → {out_path}")
 
-print("\nALL 4 MODELS COMPLETED SUCCESSFULLY!")
+print("\nALL MODELS COMPLETED SUCCESSFULLY!")
 print("Output files:", output_dir)

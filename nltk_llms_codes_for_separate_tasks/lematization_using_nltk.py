@@ -8,7 +8,7 @@ nltk.download('punkt')
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
-input_file = "dblp_cleaned_fast_100_random_samples.jsonl"
+input_file = "dblp_1000_random_samples.jsonl"
 output_file = "dblp_keywords_lemmatized_stemmed.jsonl"
 
 lemmatizer = WordNetLemmatizer()

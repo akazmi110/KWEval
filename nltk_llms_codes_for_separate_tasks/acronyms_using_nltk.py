@@ -1,7 +1,7 @@
 import json
 
 # Input/output files
-input_file = "dblp_cleaned_fast_100_random_samples.jsonl"
+input_file = "dblp_1000_random_samples.jsonl"
 output_file = "dblp_keywords_acronyms_expanded.jsonl"
 
 # Acronym dictionary
